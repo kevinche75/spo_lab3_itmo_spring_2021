@@ -2,178 +2,337 @@
 // Created by kevinche on 26.05.2021.
 //
 
+#include <pthread.h>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
+#include <sys/poll.h>
 #include <errno.h>
+#include <unistd.h>
 #include "server.h"
 
-int server_end = 1;
-int port_num = 9090;
+#define TRUE             1
+#define FALSE            0
+#define SERVER_PORT 44444
+#define BUF_SIZE 1024
+#define POLL_RUN_TIMEOUT -1
+#define MAX_CLIENTS 20
 
-int listen_inet_socket() {
+int end_server = FALSE;
 
-    int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in serv_addr;
+void *launch_listener_thread (void* args)
+{
+    int    len, rc, on = 1;
+    int    listen_sd = -1, new_sd = -1;
+    int    desc_ready, compress_array = FALSE;
+    int    close_conn;
+    char   buffer[BUF_SIZE];
+    struct sockaddr_in   addr;
+    int    timeout;
+    struct pollfd fds[MAX_CLIENTS+1];
+    int    nfds = 1, current_size = 0, i, j;
 
-    if (sock_fd < 0) {
-        perror_die("[ERROR]: opening socket");
-    } else {
-        printf("[INFO]: opened socket");
+    /*************************************************************/
+    /* Create an AF_INET6 stream socket to receive incoming      */
+    /* connections on                                            */
+    /*************************************************************/
+    listen_sd = socket(AF_INET, SOCK_STREAM, 0);
+    if (listen_sd < 0)
+    {
+        perror("socket() failed");
+        exit(-1);
     }
 
-    // This helps avoid spurious EADDRINUSE when the previous instance of this
-    // server died.
-    int opt = 1;
-    if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        perror_die("[ERROR]: set sock opt");
-    } else {
-        printf("[INFO]: set sock opt");
+    /*************************************************************/
+    /* Allow socket descriptor to be reuseable                   */
+    /*************************************************************/
+    rc = setsockopt(listen_sd, SOL_SOCKET,  SO_REUSEADDR,
+                    (char *)&on, sizeof(on));
+    if (rc < 0)
+    {
+        perror("setsockopt() failed");
+        close(listen_sd);
+        exit(-1);
     }
 
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(port_num);
-
-    if (bind(sock_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-        perror_die("[ERROR]: on binding");
+    /*************************************************************/
+    /* Set socket to be nonblocking. All of the sockets for      */
+    /* the incoming connections will also be nonblocking since   */
+    /* they will inherit that state from the listening socket.   */
+    /*************************************************************/
+    rc = ioctl(listen_sd, FIONBIO, (char *)&on);
+    if (rc < 0)
+    {
+        perror("ioctl() failed");
+        close(listen_sd);
+        exit(-1);
     }
 
-    if (listen(sock_fd, N_BACKLOG) < 0) {
-        perror_die("[ERROR]: on listen");
+    /*************************************************************/
+    /* Bind the socket                                           */
+    /*************************************************************/
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(SERVER_PORT);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    rc = bind(listen_sd,
+              (struct sockaddr *)&addr, sizeof(addr));
+    if (rc < 0)
+    {
+        perror("bind() failed");
+        close(listen_sd);
+        exit(-1);
     }
 
-    return sock_fd;
-}
-
-void make_socket_non_blocking(int sock_fd) {
-
-    int flags = fcntl(sock_fd, F_GETFL, 0);
-    if (flags == -1) {
-        perror_die("[ERROR]: while set fcntl F_GETFL");
+    /*************************************************************/
+    /* Set the listen back log                                   */
+    /*************************************************************/
+    rc = listen(listen_sd, 32);
+    if (rc < 0)
+    {
+        perror("listen() failed");
+        close(listen_sd);
+        exit(-1);
     }
 
-    if (fcntl(sock_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-        perror_die("[ERROR]: while set fcntl F_SETFL O_NONBLOCK");
-    }
-}
+    /*************************************************************/
+    /* Initialize the pollfd structure                           */
+    /*************************************************************/
+    memset(fds, 0 , sizeof(fds));
 
-void *launch_listener_thread(void * params){
-    printf("[INFO]: Serving on port %d\n", port_num);
-    int listener_sock_fd = listen_inet_socket();
-    make_socket_non_blocking(listener_sock_fd);
+    /*************************************************************/
+    /* Set up the initial listening socket                        */
+    /*************************************************************/
+    fds[0].fd = listen_sd;
+    fds[0].events = POLLIN;
+    /*************************************************************/
+    /* Initialize the timeout to 1 minute. If no                */
+    /* activity after 1 minute this program will end.           */
+    /* timeout value is based on milliseconds.                   */
+    /*************************************************************/
+    timeout = (60 * 1000);
 
-    int epoll_fd = epoll_create1(0);
-    if (epoll_fd < 0) {
-        perror_die("[ERROR]: epoll_create failed");
-    }
+    /*************************************************************/
+    /* Loop waiting for incoming connects or for incoming data   */
+    /* on any of the connected sockets.                          */
+    /*************************************************************/
+    do
+    {
+        /***********************************************************/
+        /* Call poll() and wait 3 minutes for it to complete.      */
+        /***********************************************************/
+        printf("Waiting on poll()...\n");
+        rc = poll(fds, nfds, timeout);
 
-    struct epoll_event accept_event;
-    accept_event.data.fd = listener_sock_fd;
-    accept_event.events = EPOLLIN;
-    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, listener_sock_fd, &accept_event) < 0) {
-        perror_die("[ERROR]: register listener fd - epoll_ctl EPOLL_CTL_ADD");
-    }
+        /***********************************************************/
+        /* Check to see if the poll call failed.                   */
+        /***********************************************************/
+        if (rc < 0)
+        {
+            perror("  poll() failed");
+            break;
+        }
 
-    struct epoll_event* events = calloc(MAX_FDS, sizeof(struct epoll_event));
+        /***********************************************************/
+        /* Check to see if the 3 minute time out expired.          */
+        /***********************************************************/
+        if (rc == 0)
+        {
+            printf("  poll() timed out.  End program.\n");
+            break;
+        }
 
-    if (events == NULL) {
-        perror_die("[ERROR]: Unable to allocate memory for epoll_events");
-    }
 
-    while (server_end) {
-        int new_events_count = epoll_wait(epoll_fd, events, MAX_FDS, -1);
-        for (int i = 0; i < new_events_count; i++) {
-            if (events[i].events & EPOLLERR) {
-                perror_die("[ERROR]: epoll_wait returned EPOLLERR");
+        /***********************************************************/
+        /* One or more descriptors are readable.  Need to          */
+        /* determine which ones they are.                          */
+        /***********************************************************/
+        current_size = nfds;
+        for (i = 0; i < current_size; i++)
+        {
+            /*********************************************************/
+            /* Loop through to find the descriptors that returned    */
+            /* POLLIN and determine whether it's the listening       */
+            /* or the active connection.                             */
+            /*********************************************************/
+            if(fds[i].revents == 0)
+                continue;
+
+            /*********************************************************/
+            /* If revents is not POLLIN, it's an unexpected result,  */
+            /* log and end the server.                               */
+            /*********************************************************/
+            if(fds[i].revents != POLLIN)
+            {
+                printf("  Error! revents = %d\n", fds[i].revents);
+                end_server = TRUE;
+                break;
+
+            }
+            if (fds[i].fd == listen_sd)
+            {
+                /*******************************************************/
+                /* Listening descriptor is readable.                   */
+                /*******************************************************/
+                printf("  Listening socket is readable\n");
+
+                /*******************************************************/
+                /* Accept all incoming connections that are            */
+                /* queued up on the listening socket before we         */
+                /* loop back and call poll again.                      */
+                /*******************************************************/
+                do
+                {
+                    /*****************************************************/
+                    /* Accept each incoming connection. If               */
+                    /* accept fails with EWOULDBLOCK, then we            */
+                    /* have accepted all of them. Any other              */
+                    /* failure on accept will cause us to end the        */
+                    /* server.                                           */
+                    /*****************************************************/
+                    new_sd = accept(listen_sd, NULL, NULL);
+                    if (new_sd < 0)
+                    {
+                        if (errno != EWOULDBLOCK)
+                        {
+                            perror("  accept() failed");
+                            end_server = TRUE;
+                        }
+                        break;
+                    }
+
+                    /*****************************************************/
+                    /* Add the new incoming connection to the            */
+                    /* pollfd structure                                  */
+                    /*****************************************************/
+                    printf("  New incoming connection - %d\n", new_sd);
+                    fds[nfds].fd = new_sd;
+                    fds[nfds].events = POLLIN;
+                    nfds++;
+
+                    /*****************************************************/
+                    /* Loop back up and accept another incoming          */
+                    /* connection                                        */
+                    /*****************************************************/
+                } while (new_sd != -1);
             }
 
-            if (events[i].data.fd == listener_sock_fd) {
-                // The listening socket is ready; this means a new peer is connecting.
+                /*********************************************************/
+                /* This is not the listening socket, therefore an        */
+                /* existing connection must be readable                  */
+                /*********************************************************/
 
-                struct sockaddr_in peer_addr;
-                socklen_t peer_addr_len = sizeof(peer_addr);
-                int new_sock_fd = accept(listener_sock_fd, (struct sockaddr*)&peer_addr,
-                                         &peer_addr_len);
+            else
+            {
+                printf("  Descriptor %d is readable\n", fds[i].fd);
+                close_conn = FALSE;
+                /*******************************************************/
+                /* Receive all incoming data on this socket            */
+                /* before we loop back and call poll again.            */
+                /*******************************************************/
 
-                if (new_sock_fd < 0) {
-
-                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                        // This can happen due to the nonblocking socket mode; in this
-                        // case don't do anything, but print a notice (since these events
-                        // are extremely rare and interesting to observe...)
-                        printf("[INFO]: accept returned EAGAIN or EWOULDBLOCK\n");
-                    } else {
-                        perror_die("[ERROR]: accept connection error");
-                    }
-                } else {
-                    make_socket_non_blocking(new_sock_fd);
-                    if (new_sock_fd >= MAX_FDS) {
-                        die("[ERROR]: socket fd (%d) >= MAX_FDS (%d)", new_sock_fd, MAX_FDS);
-                    }
-
-                    fd_status_t status = on_peer_connected(new_sock_fd, &peer_addr, peer_addr_len);
-                    struct epoll_event event = {0};
-                    event.data.fd = new_sock_fd;
-                    if (status.want_read) {
-                        event.events |= EPOLLIN;
-                    }
-                    if (status.want_write) {
-                        event.events |= EPOLLOUT;
+                do
+                {
+                    /*****************************************************/
+                    /* Receive data on this connection until the         */
+                    /* recv fails with EWOULDBLOCK. If any other         */
+                    /* failure occurs, we will close the                 */
+                    /* connection.                                       */
+                    /*****************************************************/
+                    rc = recv(fds[i].fd, buffer, sizeof(buffer), 0);
+                    if (rc < 0)
+                    {
+                        if (errno != EWOULDBLOCK)
+                        {
+                            perror("  recv() failed");
+                            close_conn = TRUE;
+                        }
+                        break;
                     }
 
-                    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, new_sock_fd, &event) < 0) {
-                        perror_die("epoll_ctl EPOLL_CTL_ADD");
+                    /*****************************************************/
+                    /* Check to see if the connection has been           */
+                    /* closed by the client                              */
+                    /*****************************************************/
+                    if (rc == 0)
+                    {
+                        printf("  Connection closed\n");
+                        close_conn = TRUE;
+                        break;
                     }
+
+                    /*****************************************************/
+                    /* Data was received                                 */
+                    /*****************************************************/
+                    len = rc;
+                    printf("  %d bytes received\n", len);
+
+                    /*****************************************************/
+                    /* Echo the data back to the client                  */
+                    /*****************************************************/
+                    rc = send(fds[i].fd, buffer, len, 0);
+                    if (rc < 0)
+                    {
+                        perror("  send() failed");
+                        close_conn = TRUE;
+                        break;
+                    }
+
+                } while(TRUE);
+
+                /*******************************************************/
+                /* If the close_conn flag was turned on, we need       */
+                /* to clean up this active connection. This            */
+                /* clean up process includes removing the              */
+                /* descriptor.                                         */
+                /*******************************************************/
+                if (close_conn)
+                {
+                    close(fds[i].fd);
+                    fds[i].fd = -1;
+                    compress_array = TRUE;
                 }
-            } else {
-                // A peer socket is ready.
-                if (events[i].events & EPOLLIN) {
-                    // Ready for reading.
-                    int fd = events[i].data.fd;
-                    fd_status_t status = on_peer_ready_recv(fd);
-                    struct epoll_event event = {0};
-                    event.data.fd = fd;
-                    if (status.want_read) {
-                        event.events |= EPOLLIN;
-                    }
-                    if (status.want_write) {
-                        event.events |= EPOLLOUT;
-                    }
-                    if (event.events == 0) {
-                        printf("socket %d closing\n", fd);
-                        if (epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL) < 0) {
-                            perror_die("epoll_ctl EPOLL_CTL_DEL");
-                        }
-                        close(fd);
-                    } else if (epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &event) < 0) {
-                        perror_die("epoll_ctl EPOLL_CTL_MOD");
-                    }
-                } else if (events[i].events & EPOLLOUT) {
-                    // Ready for writing.
-                    int fd = events[i].data.fd;
-                    fd_status_t status = on_peer_ready_send(fd);
-                    struct epoll_event event = {0};
-                    event.data.fd = fd;
 
-                    if (status.want_read) {
-                        event.events |= EPOLLIN;
+
+            }  /* End of existing connection is readable             */
+        } /* End of loop through pollable descriptors              */
+
+        /***********************************************************/
+        /* If the compress_array flag was turned on, we need       */
+        /* to squeeze together the array and decrement the number  */
+        /* of file descriptors. We do not need to move back the    */
+        /* events and revents fields because the events will always*/
+        /* be POLLIN in this case, and revents is output.          */
+        /***********************************************************/
+        if (compress_array)
+        {
+            compress_array = FALSE;
+            for (i = 0; i < nfds; i++)
+            {
+                if (fds[i].fd == -1)
+                {
+                    for(j = i; j < nfds; j++)
+                    {
+                        fds[j].fd = fds[j+1].fd;
                     }
-                    if (status.want_write) {
-                        event.events |= EPOLLOUT;
-                    }
-                    if (event.events == 0) {
-                        printf("socket %d closing\n", fd);
-                        if (epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL) < 0) {
-                            perror_die("epoll_ctl EPOLL_CTL_DEL");
-                        }
-                        close(fd);
-                    } else if (epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &event) < 0) {
-                        perror_die("epoll_ctl EPOLL_CTL_MOD");
-                    }
+                    i--;
+                    nfds--;
                 }
             }
         }
-    }
 
+    } while (end_server == FALSE); /* End of serving running.    */
+
+    /*************************************************************/
+    /* Clean up all of the sockets that are open                 */
+    /*************************************************************/
+    for (i = 0; i < nfds; i++)
+    {
+        if(fds[i].fd >= 0)
+            close(fds[i].fd);
+    }
 }
 
 int server_mode(){
