@@ -18,7 +18,6 @@
 #define FALSE            0
 #define SERVER_PORT 44444
 #define BUF_SIZE 1024
-#define POLL_RUN_TIMEOUT -1
 #define MAX_CLIENTS 20
 
 int end_server = FALSE;
@@ -36,7 +35,7 @@ void *launch_listener_thread (void* args)
     int    nfds = 1, current_size = 0, i, j;
 
     /*************************************************************/
-    /* Create an AF_INET6 stream socket to receive incoming      */
+    /* Create an AF_INET stream socket to receive incoming      */
     /* connections on                                            */
     /*************************************************************/
     listen_sd = socket(AF_INET, SOCK_STREAM, 0);
@@ -121,7 +120,7 @@ void *launch_listener_thread (void* args)
     do
     {
         /***********************************************************/
-        /* Call poll() and wait 3 minutes for it to complete.      */
+        /* Call poll() and wait 1 minute for it to complete.      */
         /***********************************************************/
         printf("Waiting on poll()...\n");
         rc = poll(fds, nfds, timeout);
@@ -136,7 +135,7 @@ void *launch_listener_thread (void* args)
         }
 
         /***********************************************************/
-        /* Check to see if the 3 minute time out expired.          */
+        /* Check to see if the minute time out expired.          */
         /***********************************************************/
         if (rc == 0)
         {
@@ -167,7 +166,7 @@ void *launch_listener_thread (void* args)
             if(fds[i].revents != POLLIN)
             {
                 printf("  Error! revents = %d\n", fds[i].revents);
-                end_server = TRUE;
+                end_server = TRUE;  
                 break;
 
             }
@@ -338,10 +337,10 @@ void *launch_listener_thread (void* args)
 int server_mode(){
     pthread_t listener;
     pthread_create(&listener, NULL, launch_listener_thread, NULL);
-    while (server_end){
+    while (!end_server){
         char c = (char)getchar();
         if(c=='Q'){
-            server_end = 0;
+            end_server = TRUE;
         }
     }
     return 0;

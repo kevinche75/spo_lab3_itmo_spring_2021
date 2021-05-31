@@ -25,4 +25,17 @@ struct tree_node{
     char content[256];
 };
 
+struct tree{
+    struct tree_node *start;
+    size_t used;
+    size_t size;
+};
+
+struct updated_nodes{
+    long inserted_id;
+    long updated_id;
+};
+
 void perror_die(char* msg);
+void init_tree(struct tree *message_tree, size_t init_size);
+long insert_tree(struct tree* message_tree, char *name, char *content, long parent_id);
