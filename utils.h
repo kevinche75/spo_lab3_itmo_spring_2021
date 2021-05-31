@@ -1,7 +1,7 @@
 //
 // Created by kevinche on 25.05.2021.
 //
-#include <sys/time.h>
+#include <time.h>
 
 
 #ifndef SPO_LAB3_MESSAGE_H
@@ -38,4 +38,4 @@ struct updated_nodes{
 
 void perror_die(char* msg);
 void init_tree(struct tree *message_tree, size_t init_size);
-long insert_tree(struct tree* message_tree, char *name, char *content, long parent_id);
+long insert_tree_message(struct tree* message_tree, struct message *received_message);
