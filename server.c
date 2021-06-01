@@ -17,7 +17,6 @@
 #define TRUE             1
 #define FALSE            0
 #define SERVER_PORT 44444
-#define BUF_SIZE 1024
 #define MAX_CLIENTS 20
 
 int end_server = FALSE;
@@ -31,7 +30,7 @@ void *launch_listener_thread (void* args)
     int    desc_ready, compress_array = FALSE;
     int    close_conn;
     struct message *buffer = NULL;
-    struct sockaddr_in   addr;
+    struct sockaddr_in addr;
     int    timeout;
     struct pollfd fds[MAX_CLIENTS+1];
     int    nfds = 1, current_size = 0, i, j;
@@ -287,6 +286,8 @@ void *launch_listener_thread (void* args)
         if(fds[i].fd >= 0)
             close(fds[i].fd);
     }
+
+    return NULL;
 }
 
 int server_mode(){
