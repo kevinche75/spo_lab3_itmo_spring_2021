@@ -1,15 +1,12 @@
 #include <stdio.h>
 #include <unistd.h> /* for sleep */
 #include <sys/ioctl.h>
+#include "graphics.h"
+#include "server.h"
 
-#define update() printf("\033[H\033[J")
-#define gotoxy(x, y) printf("\033[%d;%dH", x, y)
-
-struct winsize size;
-
-int main(void)
+int main(int argc, char *argv[])
 {
-
+    server_mode();
 }
 
 //#include <stdio.h>

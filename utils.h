@@ -12,14 +12,14 @@
 struct message{
     char name[20];
     char content[256];
-    long parent_id;
+    int parent_id;
 };
 
 struct tree_node{
-    long id;
-    long sibling;
-    long child;
-    long parent;
+    int id;
+    int sibling;
+    int child;
+    int parent;
     time_t creation_time;
     char name[20];
     char content[256];
@@ -32,10 +32,14 @@ struct tree{
 };
 
 struct updated_nodes{
-    long inserted_id;
-    long updated_id;
+    int inserted_id;
+    int updated_id;
 };
 
 void perror_die(char* msg);
-void init_tree(struct tree *message_tree, size_t init_size);
-long insert_tree_message(struct tree* message_tree, struct message *received_message);
+void init_tree(struct tree *message_tree, size_t init_size, int server);
+int insert_tree_message(struct tree* message_tree, struct message *received_message);
+void insert_tree_node(struct tree *message_tree, int *draw_order, int *visible, struct tree_node *node);
+int *init_draw_order(int *draw_order, size_t init_size);
+void init_visible_array(int *visible, size_t init_size);
+void init_draw_order_array(int *draw_order, size_t init_size);

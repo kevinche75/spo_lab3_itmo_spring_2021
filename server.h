@@ -12,3 +12,5 @@
 
 #define MAX_FDS 1024
 #define N_BACKLOG 64
+
+int server_mode();

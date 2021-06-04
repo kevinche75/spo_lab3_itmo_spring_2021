@@ -21,7 +21,7 @@
 
 int end_server = FALSE;
 
-struct tree *message_tree;
+struct tree *server_message_tree;
 
 void *launch_listener_thread (void* args)
 {
@@ -34,8 +34,8 @@ void *launch_listener_thread (void* args)
     int    timeout;
     struct pollfd fds[MAX_CLIENTS+1];
     int    nfds = 1, current_size = 0, i, j;
-    long updated;
-    init_tree(message_tree, 256);
+    int updated;
+    init_tree(server_message_tree, 256, 1);
 
     /* Create an AF_INET stream socket to receive incoming      */
     /* connections on                                            */
@@ -175,8 +175,10 @@ void *launch_listener_thread (void* args)
                     nfds++;
 
                     //Send tree
-                    for(int node_i = 0; node_i < message_tree->used; node_i++){
-                        send(new_sd, &(message_tree->start[node_i]), sizeof (struct tree_node), 0);
+
+                    send(new_sd, &(server_message_tree->used), sizeof (size_t), 0);
+                    for(int node_i = 0; node_i < server_message_tree->used; node_i++){
+                        send(new_sd, &(server_message_tree->start[node_i]), sizeof (struct tree_node), 0);
                     }
 
                     /* Loop back up and accept another incoming          */
@@ -219,11 +221,11 @@ void *launch_listener_thread (void* args)
                     len = rc;
                     printf("  %d bytes received\n", len);
 
-                    updated = insert_tree_message(message_tree, buffer);
+                    updated = insert_tree_message(server_message_tree, buffer);
 
                     /* Echo the updated data to the clients                  */
                     for (int fd_i = 1; fd_i < nfds; fd_i++){
-                        rc = send(fds[fd_i].fd, &(message_tree->start[updated]), sizeof (struct tree_node), 0);
+                        rc = send(fds[fd_i].fd, &(server_message_tree->start[updated]), sizeof (struct tree_node), 0);
                         if (rc < 0)
                         {
                             perror("  send() failed");
@@ -231,7 +233,7 @@ void *launch_listener_thread (void* args)
                             break;
                         }
 
-                        rc = send(fds[fd_i].fd, &(message_tree->start[message_tree->used-1]), sizeof (struct tree_node), 0);
+                        rc = send(fds[fd_i].fd, &(server_message_tree->start[server_message_tree->used - 1]), sizeof (struct tree_node), 0);
                         if (rc < 0)
                         {
                             perror("  send() failed");
@@ -291,14 +293,16 @@ void *launch_listener_thread (void* args)
 }
 
 int server_mode(){
-    pthread_t listener;
-    pthread_create(&listener, NULL, launch_listener_thread, NULL);
-    while (!end_server){
-        char c = (char)getchar();
-        if(c=='Q'){
-            end_server = TRUE;
-        }
-    }
+//    pthread_t listener;
+//    pthread_create(&listener, NULL, launch_listener_thread, NULL);
+//    while (!end_server){
+//        char c = (char)getchar();
+//        if(c=='Q'){
+//            end_server = TRUE;
+//        }
+//    }
+
+    launch_listener_thread(NULL);
     return 0;
 
 }
