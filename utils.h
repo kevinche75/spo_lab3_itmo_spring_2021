@@ -37,7 +37,7 @@ struct updated_nodes{
 };
 
 void perror_die(char* msg);
-void init_tree(struct tree *message_tree, size_t init_size, int server);
+struct tree *init_tree(size_t init_size, int server);
 int insert_tree_message(struct tree* message_tree, struct message *received_message);
 void insert_tree_node(struct tree *message_tree, int *draw_order, int *visible, struct tree_node *node);
 int *init_draw_order(int *draw_order, size_t init_size);

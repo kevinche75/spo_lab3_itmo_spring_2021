@@ -41,7 +41,7 @@ int creat_socket(int port)
 }
 
 void init_receive(){
-    init_tree(client_message_tree, 256, 0);
+    client_message_tree = init_tree(256, 0);
     init_visible_array(visible, 256);
     init_draw_order(draw_order, 256);
     struct tree_node *accepted_node = calloc(1, sizeof (struct tree_node));

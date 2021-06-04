@@ -35,7 +35,7 @@ void *launch_listener_thread (void* args)
     struct pollfd fds[MAX_CLIENTS+1];
     int    nfds = 1, current_size = 0, i, j;
     int updated;
-    init_tree(server_message_tree, 256, 1);
+    server_message_tree = init_tree(256, 1);
 
     /* Create an AF_INET stream socket to receive incoming      */
     /* connections on                                            */
@@ -175,10 +175,13 @@ void *launch_listener_thread (void* args)
                     nfds++;
 
                     //Send tree
+                    if(send(new_sd, &(server_message_tree->used), sizeof (size_t), 0) < 0){
+                        printf("Can't send");
+                        break;
+                    }
 
-                    send(new_sd, &(server_message_tree->used), sizeof (size_t), 0);
                     for(int node_i = 0; node_i < server_message_tree->used; node_i++){
-                        send(new_sd, &(server_message_tree->start[node_i]), sizeof (struct tree_node), 0);
+                        send(fds[nfds].fd, &(server_message_tree->start[node_i]), sizeof (struct tree_node), 0);
                     }
 
                     /* Loop back up and accept another incoming          */
@@ -280,7 +283,7 @@ void *launch_listener_thread (void* args)
             }
         }
 
-    } while (end_server == FALSE); /* End of serving running.    */
+    } while (end_server == TRUE); /* End of serving running.    */
 
     /* Clean up all of the sockets that are open                 */
     for (i = 0; i < nfds; i++)

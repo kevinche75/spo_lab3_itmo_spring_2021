@@ -12,8 +12,9 @@ void perror_die(char* msg) {
     exit(EXIT_FAILURE);
 }
 
-void init_tree(struct tree *message_tree, size_t init_size, int server){
-
+struct tree *init_tree(size_t init_size, int server){
+    struct tree *message_tree;
+    message_tree = calloc(sizeof (struct tree), 1);
     message_tree->start = calloc(init_size, sizeof (struct tree_node));
     message_tree->used = 0;
     message_tree->size = init_size;
@@ -28,6 +29,7 @@ void init_tree(struct tree *message_tree, size_t init_size, int server){
         message_tree->start->creation_time = time(NULL);
         message_tree->used++;
     }
+    return message_tree;
 }
 
 void init_visible_array(int *visible, size_t init_size){
