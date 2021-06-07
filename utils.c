@@ -1,7 +1,7 @@
 //
 // Created by kevinche on 25.05.2021.
 //
-
+#pragma once
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,12 +32,14 @@ struct tree *init_tree(size_t init_size, int server){
     return message_tree;
 }
 
-void init_visible_array(int *visible, size_t init_size){
-    visible = calloc(init_size, sizeof (int));
+int *init_visible_array(size_t init_size){
+    int *visible = calloc(init_size, sizeof (int));
+    return visible;
 }
 
-void init_draw_order_array(int *draw_order, size_t init_size){
-    draw_order = calloc(init_size, sizeof (int));
+struct draw_status *init_draw_order_array(size_t init_size){
+    struct draw_status *draw_order = calloc(init_size, sizeof (struct draw_status));
+    return draw_order;
 }
 
 int insert_tree_message(struct tree* message_tree, struct message *received_message){
@@ -78,25 +80,20 @@ int insert_tree_message(struct tree* message_tree, struct message *received_mess
     return updated;
 }
 
-void insert_tree_node(struct tree *message_tree, int *draw_order, int *visible, struct tree_node *node){
+void insert_tree_node(struct tree *message_tree, struct draw_status *draw_order, int *visible, struct tree_node *node){
 
     //update, if needed, array size
     if (message_tree->used == message_tree->size){
         message_tree->size *= 2;
         message_tree->start = realloc(message_tree->start, message_tree->size * sizeof (struct tree_node));
-        draw_order = realloc(draw_order, message_tree->size * sizeof (int));
+        draw_order = realloc(draw_order, message_tree->size * sizeof (struct draw_status));
         visible = realloc(visible, message_tree->size * sizeof (int));
     }
 
     //init new node
     struct tree_node *new_message = &(message_tree->start)[message_tree->used];
     memcpy(new_message, node, sizeof (struct tree_node));
-
+    visible[message_tree->used] = 1;
     //update used nodes
     message_tree->used++;
-}
-
-int *init_draw_order(int *draw_order, size_t init_size){
-    draw_order = calloc(init_size, sizeof (int));
-    return draw_order;
 }

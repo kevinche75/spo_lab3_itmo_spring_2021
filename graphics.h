@@ -6,12 +6,16 @@
 #define SPO_LAB3_GRAPHICS_H
 
 #endif //SPO_LAB3_GRAPHICS_H
+#pragma once
+#include "utils.h"
 
 struct coordinates{
     int id;
-    int row;
+    int column;
 };
 
-void set_keypress(void);
 void init_screen();
-void reset_keypress(void);
+void order_draw_tree(struct tree *message_tree, int *visible, struct draw_status *draw_order);
+void flash_board();
+void draw_tree(struct tree *message_tree, struct draw_status *draw_order);
+

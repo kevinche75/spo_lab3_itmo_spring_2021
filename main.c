@@ -1,12 +1,15 @@
+#pragma once
 #include <stdio.h>
 #include <unistd.h> /* for sleep */
 #include <sys/ioctl.h>
 #include "graphics.h"
-#include "server.h"
+#include "client.h"
+#include <time.h>
+#include <malloc.h>
 
 int main(int argc, char *argv[])
 {
-    server_mode();
+    start_client("kevinche", 44444);
 }
 
 //#include <stdio.h>

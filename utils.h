@@ -1,6 +1,7 @@
 //
 // Created by kevinche on 25.05.2021.
 //
+#pragma once
 #include <time.h>
 
 
@@ -36,10 +37,14 @@ struct updated_nodes{
     int updated_id;
 };
 
+struct draw_status{
+    int id;
+    int level;
+};
+
 void perror_die(char* msg);
 struct tree *init_tree(size_t init_size, int server);
 int insert_tree_message(struct tree* message_tree, struct message *received_message);
-void insert_tree_node(struct tree *message_tree, int *draw_order, int *visible, struct tree_node *node);
-int *init_draw_order(int *draw_order, size_t init_size);
-void init_visible_array(int *visible, size_t init_size);
-void init_draw_order_array(int *draw_order, size_t init_size);
+void insert_tree_node(struct tree *message_tree, struct draw_status *draw_order, int *visible, struct tree_node *node);
+int *init_visible_array(size_t init_size);
+struct draw_status *init_draw_order_array(size_t init_size);
