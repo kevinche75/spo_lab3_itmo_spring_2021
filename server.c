@@ -2,16 +2,6 @@
 // Created by kevinche on 26.05.2021.
 //
 
-#include <pthread.h>
-#include <stdio.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/ioctl.h>
-#include <sys/poll.h>
-#include <errno.h>
-#include <unistd.h>
 #include "server.h"
 
 #define TRUE             1

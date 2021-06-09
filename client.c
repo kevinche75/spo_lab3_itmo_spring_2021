@@ -2,15 +2,7 @@
 // Created by kevinche on 02.06.2021.
 //
 
-#include <sys/socket.h>
 #include "client.h"
-#include <netinet/in.h>
-#include <stdio.h>
-#include <arpa/inet.h>
-#include <malloc.h>
-#include <string.h>
-#include <poll.h>
-#include <unistd.h>
 
 struct tree *client_message_tree;
 int *visible;

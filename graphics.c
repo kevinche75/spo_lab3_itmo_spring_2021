@@ -4,16 +4,6 @@
 
 #include "graphics.h"
 
-#include <stdio.h>
-#include <sys/ioctl.h>
-#include <stdlib.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <termios.h>
-#include "utils.h"
-#include <string.h>
-
 int arrow_coord = 0;
 int board_max = 0;
 struct coordinates *start_with;

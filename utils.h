@@ -3,7 +3,18 @@
 //
 #pragma once
 #include <time.h>
-
+#include <stdio.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
+#include <errno.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <malloc.h>
+#include <poll.h>
+#include <termios.h>
 
 #ifndef SPO_LAB3_MESSAGE_H
 #define SPO_LAB3_MESSAGE_H

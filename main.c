@@ -3,5 +3,12 @@
 
 int main(int argc, char *argv[])
 {
-    server_mode();
+    if (argc >= 2 && strcmp(argv[1], "server") == 0){
+        server_mode();
+        return 0;
+    }
+    if (argc >= 2 && strcmp(argv[1], "client") == 0){
+        server_mode();
+        return 0;
+    }
 }
