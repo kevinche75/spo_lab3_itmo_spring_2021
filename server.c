@@ -23,13 +23,29 @@ int end_server = FALSE;
 
 struct tree *server_message_tree;
 
+void send_tree(int fd){
+    //Send tree
+    if(send(fd, &(server_message_tree->used), sizeof (size_t), 0) < 0){
+        printf("[ERROR]: Can't send number of nodes in tree");
+        return;
+    }
+
+    for(int node_i = 0; node_i < server_message_tree->used; node_i++){
+        if(send(fd, &(server_message_tree->start[node_i]), sizeof (struct tree_node), 0)<0){
+            printf("[ERROR]: Can't send node");
+            return;
+        }
+    }
+    printf("[INFO]: Message tree was sent\n");
+}
+
 void *launch_listener_thread (void* args)
 {
     int    len, rc, on = 1;
     int    listen_sd = -1, new_sd = -1;
     int    desc_ready, compress_array = FALSE;
     int    close_conn;
-    struct message *buffer = NULL;
+    struct message *buffer = calloc(1, sizeof (struct message));
     struct sockaddr_in addr;
     int    timeout;
     struct pollfd fds[MAX_CLIENTS+1];
@@ -104,7 +120,7 @@ void *launch_listener_thread (void* args)
     {
         /* Call poll() and wait 1 minute for it to complete.      */
         printf("Waiting on poll()...\n");
-        rc = poll(fds, nfds, timeout);
+        rc = poll(fds, nfds, -1);
 
         /* Check to see if the poll call failed.                   */
         if (rc < 0)
@@ -174,16 +190,6 @@ void *launch_listener_thread (void* args)
                     fds[nfds].events = POLLIN;
                     nfds++;
 
-                    //Send tree
-                    if(send(new_sd, &(server_message_tree->used), sizeof (size_t), 0) < 0){
-                        printf("Can't send");
-                        break;
-                    }
-
-                    for(int node_i = 0; node_i < server_message_tree->used; node_i++){
-                        send(fds[nfds].fd, &(server_message_tree->start[node_i]), sizeof (struct tree_node), 0);
-                    }
-
                     /* Loop back up and accept another incoming          */
                     /* connection                                        */
                 } while (new_sd != -1);
@@ -224,27 +230,31 @@ void *launch_listener_thread (void* args)
                     len = rc;
                     printf("  %d bytes received\n", len);
 
-                    updated = insert_tree_message(server_message_tree, buffer);
+                    if (buffer->parent_id < 0){
+                        printf("[INFO]: Message type GET_MESSAGE_TREE\n");
+                        send_tree(fds[i].fd);
+                    } else {
+                        updated = insert_tree_message(server_message_tree, buffer);
 
-                    /* Echo the updated data to the clients                  */
-                    for (int fd_i = 1; fd_i < nfds; fd_i++){
-                        rc = send(fds[fd_i].fd, &(server_message_tree->start[updated]), sizeof (struct tree_node), 0);
-                        if (rc < 0)
-                        {
-                            perror("  send() failed");
-                            close_conn = TRUE;
-                            break;
-                        }
+                        /* Echo the updated data to the clients                  */
+                        for (int fd_i = 1; fd_i < nfds; fd_i++) {
+                            rc = send(fds[fd_i].fd, &(server_message_tree->start[updated]), sizeof(struct tree_node),
+                                      0);
+                            if (rc < 0) {
+                                perror("  send() failed");
+                                close_conn = TRUE;
+                                break;
+                            }
 
-                        rc = send(fds[fd_i].fd, &(server_message_tree->start[server_message_tree->used - 1]), sizeof (struct tree_node), 0);
-                        if (rc < 0)
-                        {
-                            perror("  send() failed");
-                            close_conn = TRUE;
-                            break;
+                            rc = send(fds[fd_i].fd, &(server_message_tree->start[server_message_tree->used - 1]),
+                                      sizeof(struct tree_node), 0);
+                            if (rc < 0) {
+                                perror("  send() failed");
+                                close_conn = TRUE;
+                                break;
+                            }
                         }
                     }
-
                 } while(TRUE);
                 /* If the close_conn flag was turned on, we need       */
                 /* to clean up this active connection. This            */
@@ -283,7 +293,7 @@ void *launch_listener_thread (void* args)
             }
         }
 
-    } while (end_server == TRUE); /* End of serving running.    */
+    } while (TRUE); /* End of serving running.    */
 
     /* Clean up all of the sockets that are open                 */
     for (i = 0; i < nfds; i++)
