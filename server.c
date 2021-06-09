@@ -32,9 +32,11 @@ void send_tree(int fd) {
 
 void close_connections(int dummy){
     /* Clean up all of the sockets that are open                 */
+
     for (int i = 0; i < nfds; i++) {
-        if (fds[i].fd >= 0)
+        if (fds[i].fd >= 0){
             close(fds[i].fd);
+        }
     }
 
     printf("[INFO]: connections were closed\n");

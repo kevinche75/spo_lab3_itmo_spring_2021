@@ -80,17 +80,27 @@ void init_receive(){
     }
 }
 
+void server_closed(){
+    flush_board();
+    goto_xy(0, 0);
+    puts("[INFO]: Server closed");
+    sleep(1);
+    end_handler(0);
+}
+
 void receive(){
 
     if(recv(server_socket, accepted_node, sizeof (struct tree_node), 0) > 0){
         insert_tree_node(client_message_tree, draw_order, visible, accepted_node);
     } else {
-        perror_die("[ERROR]: Can't accept message");
+        server_closed();
+        return;
     }
     if(recv(server_socket, accepted_node, sizeof (struct tree_node), 0) > 0){
         insert_tree_node(client_message_tree, draw_order, visible, accepted_node);
     } else {
-        perror_die("[ERROR]: Can't accept message");
+        server_closed();
+        return;
     }
     redraw_tree(client_message_tree, visible, draw_order);
 }
