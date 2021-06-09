@@ -94,7 +94,12 @@ void insert_tree_node(struct tree *message_tree, struct draw_status *draw_order,
     if (node->id >= message_tree->used){
         visible[node->id].visible = 1;
         visible[node->id].new_message = 1;
-        visible[node->parent].new_message = 1;
+        int parent = node->parent;
+        while (parent != -1){
+            visible[parent].new_message = 1;
+            parent = message_tree->start[parent].parent;
+        }
+        visible[0].new_message = 1;
         //update used nodes
         message_tree->used++;
     }
