@@ -94,7 +94,8 @@ void receive(){
 
 void send_message(){
     if (message_buffer->used > 0){
-        int parent_id = get_current_node();
+        int parent_id = get_current_node(draw_order);
+        if (parent_id < 0) return;
         client_message->parent_id = parent_id;
         strcpy(client_message->content, message_buffer->content);
         if(send(server_socket, client_message, sizeof (struct message), 0) < 0){
@@ -111,6 +112,7 @@ void update_message(char c){
         message_buffer->content[message_buffer->used] = c;
         add_symbol(message_buffer->used, c);
         message_buffer->used++;
+        message_buffer->content[message_buffer->used] = '\0';
     }
 }
 
@@ -150,6 +152,9 @@ void user_handler(){
                 break;
             case ESC:
                 set_write_mode();
+                break;
+            case 'e':
+                roll(client_message_tree, visible, draw_order);
                 break;
             default:
                 break;
@@ -198,4 +203,5 @@ void start_client(char* user_name, int port){
             receive();
         }
     }
+    reset_keypress();
 }

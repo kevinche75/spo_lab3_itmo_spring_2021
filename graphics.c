@@ -99,9 +99,9 @@ void order_draw_node(struct tree *message_tree, int *visible, struct draw_status
         if(node->child > 0){
             order_draw_node(message_tree, visible, draw_order, level+1, node->child);
         }
-        if(node->sibling > 0){
-            order_draw_node(message_tree, visible, draw_order, level, node->sibling);
-        }
+    }
+    if(node->sibling > 0){
+        order_draw_node(message_tree, visible, draw_order, level, node->sibling);
     }
 }
 
@@ -118,7 +118,8 @@ int calc_row_length(struct tree *message_tree, struct draw_status *draw_status_e
 
 char *create_row(struct tree *message_tree, struct draw_status *draw_status_element){
     struct tree_node *node = &(message_tree->start)[draw_status_element->id];
-    char *row = malloc(calc_row_length(message_tree, draw_status_element)+1);
+    int len = calc_row_length(message_tree, draw_status_element);
+    char *row = malloc(len+1);
     int i;
     for (i = 0; i < draw_status_element->level; i++){
         row[3*i] = ' ';
@@ -135,6 +136,7 @@ char *create_row(struct tree *message_tree, struct draw_status *draw_status_elem
     strcat(row, node->name);
     strcat(row, " - ");
     strcat(row, node->content);
+    row[len] = '\0';
     return row;
 }
 
@@ -151,13 +153,17 @@ void draw_tree(struct tree *message_tree, struct draw_status *draw_order){
     int board_i = 0;
     flush_board();
     char *row;
-    for (; draw_order_i < board_max && board_i < 20; draw_order_i++){
+    for (; draw_order_i < board_max && board_i < 19; draw_order_i++){
         goto_xy(0, board_i);
         row = create_row(message_tree, &draw_order[draw_order_i]);
-        if(strlen(&row[start_with->column]) > 75){
-            row[start_with->column+75] = '\0';
+        if(strlen(row) > start_with->column){
+            if(strlen(&row[start_with->column]) > 75){
+                row[start_with->column+75] = '\0';
+            }
+            puts(&row[start_with->column]);
+        } else {
+            puts(board_white_string);
         }
-        puts(&row[start_with->column]);
         board_i++;
     }
 }
@@ -167,8 +173,14 @@ void redraw_tree(struct tree *client_message_tree, int* visible, struct draw_sta
     draw_tree(client_message_tree, draw_order);
 }
 
-int get_current_node(){
-    return start_with->id;
+int get_current_node(struct draw_status *draw_order){
+    int draw_order_i = 0;
+    while (draw_order[draw_order_i].id != start_with->id) draw_order_i++;
+    draw_order_i += arrow_coord;
+    if (draw_order_i < board_max){
+        return draw_order[draw_order_i].id;
+    }
+    return -1;
 }
 
 void remove_symbol(int position){
@@ -207,10 +219,10 @@ void up(struct tree *message_tree, struct draw_status *draw_order){
 }
 
 void down(struct tree *message_tree, struct draw_status *draw_order){
-    if (arrow_coord == 19){
+    if (arrow_coord == 18){
         int draw_order_i = 0;
         while (draw_order[draw_order_i].id != start_with->id) draw_order_i++;
-        if (board_max - draw_order_i < 20) return;
+        if (board_max - draw_order_i < 19) return;
         start_with->id = draw_order[draw_order_i+1].id;
         draw_tree(message_tree, draw_order);
     } else {
@@ -218,7 +230,25 @@ void down(struct tree *message_tree, struct draw_status *draw_order){
     }
 };
 void right(struct tree *message_tree, struct draw_status *draw_order){
+    int max = 0;
+    int len = 0;
+    for (int draw_order_i = 0; draw_order_i < board_max; draw_order_i++){
+        len = calc_row_length(message_tree, &(draw_order[draw_order_i]));
+        max = len > max ? len : max;
+    }
+    if (max - start_with->column -1 -75> 0){
+        start_with->column++;
+        draw_tree(message_tree, draw_order);
+    }
 };
 void left(struct tree *message_tree, struct draw_status *draw_order){
+    if (start_with->column == 0) return;
+    start_with->column--;
+    draw_tree(message_tree, draw_order);
+}
 
-};
+void roll(struct tree *message_tree, int *visible, struct draw_status *draw_order){
+    int current_node = get_current_node(draw_order);
+    visible[current_node] = !visible[current_node];
+    redraw_tree(message_tree, visible, draw_order);
+}
