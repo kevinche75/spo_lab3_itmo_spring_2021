@@ -19,6 +19,7 @@ struct coordinates{
 void init_screen();
 void set_keypress();
 void reset_keypress();
+void update();
 void order_draw_tree(struct tree *message_tree, int *visible, struct draw_status *draw_order);
 void flush_board();
 void draw_tree(struct tree *message_tree, struct draw_status *draw_order);

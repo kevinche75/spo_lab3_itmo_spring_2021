@@ -43,6 +43,17 @@ int creat_socket(int port)
     return server_socket;
 }
 
+void end_handler(int dummy) {
+    flush_board();
+    goto_xy(0, 0);
+    puts("Goodbye, goodbye...");
+    sleep(1);
+    client_message->parent_id = -2;
+    send(server_socket, client_message, sizeof (struct message), 0);
+    client_end = 1;
+    update();
+}
+
 void init_receive(){
     client_message_tree = init_tree(256, 0);
     visible = init_visible_array(256);
@@ -169,9 +180,31 @@ void user_handler(){
     }
 }
 
-void client_mode(char* user_name, int port){
+void print_commands(){
+    update();
+    printf("================================================================================\n");
+    printf("==================================- COMMANDS -==================================\n");
+    printf("\n");
+    printf("ESC - change mode: WRITE/PRINT\n");
+    printf("\n");
+    printf("PRINT MODE\n");
+    printf("\t 1. w - up\n");
+    printf("\t 2. s - down\n");
+    printf("\t 3. a - left\n");
+    printf("\t 4. d - right\n");
+    printf("\t 5. e - roll/unroll\n");
+    printf("\n");
+    printf("WRITE MODE\n");
+    printf("\n");
+    printf("\t 1. ENTER - send message\n");
+    printf("\t 2. BACKSPACE - clear symbol\n");
+}
 
+void client_mode(char* user_name, int port){
+    print_commands();
+    sleep(5);
     creat_socket(port);
+    signal(SIGINT, end_handler);
     init_receive();
     init_screen();
     redraw_tree(client_message_tree, visible, draw_order);
@@ -187,7 +220,7 @@ void client_mode(char* user_name, int port){
     set_print_mode();
 
     while (!client_end){
-        ret_poll = poll(fds, ndfs, -1);
+        ret_poll = poll(fds, ndfs, 10);
         if (fds[0].revents != 0){
             user_handler();
         }

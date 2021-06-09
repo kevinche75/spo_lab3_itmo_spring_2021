@@ -15,6 +15,7 @@
 #include <malloc.h>
 #include <poll.h>
 #include <termios.h>
+#include <signal.h>
 
 #ifndef SPO_LAB3_MESSAGE_H
 #define SPO_LAB3_MESSAGE_H
