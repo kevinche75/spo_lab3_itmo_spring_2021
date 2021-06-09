@@ -9,10 +9,15 @@
 
 #pragma once
 #include "utils.h"
+#include "graphics.h"
 
 enum{
     PRINT_VIEW = 0,
     WRITE_VIEW = 1,
+};
+
+enum{
+    MAX_MESSAGE_SIZE = MESSAGE_ROW_MAX*2,
 };
 
 struct buffer{

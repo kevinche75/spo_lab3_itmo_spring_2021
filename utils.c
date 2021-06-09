@@ -91,9 +91,13 @@ void insert_tree_node(struct tree *message_tree, struct draw_status *draw_order,
     }
 
     //init new node
-    struct tree_node *new_message = &(message_tree->start)[message_tree->used];
+    struct tree_node *new_message = &(message_tree->start)[node->id];
     memcpy(new_message, node, sizeof (struct tree_node));
-    visible[message_tree->used] = 1;
-    //update used nodes
-    message_tree->used++;
+
+    //new node, not updated
+    if (node->id >= message_tree->used){
+        visible[node->id] = 1;
+        //update used nodes
+        message_tree->used++;
+    }
 }

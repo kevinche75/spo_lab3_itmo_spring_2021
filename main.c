@@ -1,4 +1,3 @@
-#pragma once
 #include <stdio.h>
 #include <unistd.h> /* for sleep */
 #include <sys/ioctl.h>
