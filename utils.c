@@ -28,8 +28,8 @@ struct tree *init_tree(size_t init_size, int server){
     return message_tree;
 }
 
-int *init_visible_array(size_t init_size){
-    int *visible = calloc(init_size, sizeof (int));
+struct visible_status *init_visible_array(size_t init_size){
+    struct visible_status *visible = calloc(init_size, sizeof (struct visible_status));
     return visible;
 }
 
@@ -76,14 +76,14 @@ int insert_tree_message(struct tree* message_tree, struct message *received_mess
     return updated;
 }
 
-void insert_tree_node(struct tree *message_tree, struct draw_status *draw_order, int *visible, struct tree_node *node){
+void insert_tree_node(struct tree *message_tree, struct draw_status *draw_order, struct visible_status *visible, struct tree_node *node){
 
     //update, if needed, array size
     if (message_tree->used == message_tree->size){
         message_tree->size *= 2;
         message_tree->start = realloc(message_tree->start, message_tree->size * sizeof (struct tree_node));
         draw_order = realloc(draw_order, message_tree->size * sizeof (struct draw_status));
-        visible = realloc(visible, message_tree->size * sizeof (int));
+        visible = realloc(visible, message_tree->size * sizeof (struct visible_status));
     }
 
     //init new node
@@ -92,7 +92,9 @@ void insert_tree_node(struct tree *message_tree, struct draw_status *draw_order,
 
     //new node, not updated
     if (node->id >= message_tree->used){
-        visible[node->id] = 1;
+        visible[node->id].visible = 1;
+        visible[node->id].new_message = 1;
+        visible[node->parent].new_message = 1;
         //update used nodes
         message_tree->used++;
     }

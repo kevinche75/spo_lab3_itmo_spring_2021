@@ -5,7 +5,7 @@
 #include "client.h"
 
 struct tree *client_message_tree;
-int *visible;
+struct visible_status *visible;
 struct draw_status *draw_order;
 int server_socket;
 int console_status = PRINT_VIEW;

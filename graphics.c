@@ -80,12 +80,16 @@ void init_screen(){
     update_arrow(0);
 }
 
-void order_draw_node(struct tree *message_tree, int *visible, struct draw_status *draw_order, int level, int id){
+void order_draw_node(struct tree *message_tree, struct visible_status *visible, struct draw_status *draw_order, int level, int id){
     struct tree_node *node = &(message_tree->start)[id];
     draw_order[board_max].id = node->id;
     draw_order[board_max].level = level;
+    if(visible[id].new_message){
+        draw_order[board_max].new_message = 1;
+        visible[id].new_message = 0;
+    }
     board_max++;
-    if(visible[id]){
+    if(visible[id].visible){
         if(node->child > 0){
             order_draw_node(message_tree, visible, draw_order, level+1, node->child);
         }
@@ -95,7 +99,7 @@ void order_draw_node(struct tree *message_tree, int *visible, struct draw_status
     }
 }
 
-void order_draw_tree(struct tree *message_tree, int *visible, struct draw_status *draw_order){
+void order_draw_tree(struct tree *message_tree, struct visible_status *visible, struct draw_status *draw_order){
     board_max = 0;
     order_draw_node(message_tree, visible, draw_order, 0, 0);
 }
@@ -117,7 +121,12 @@ char *create_row(struct tree *message_tree, struct draw_status *draw_status_elem
         row[3*i+2] = ' ';
     }
     row[3*draw_status_element->level] = '\0';
-    strcat(row, "+-");
+    if(draw_status_element->new_message){
+        strcat(row, "!-");
+    } else {
+        strcat(row, "+-");
+    }
+
     struct tm* tm_info;
     tm_info = localtime(&node->creation_time);
     i = draw_status_element->level*3+2;
@@ -158,7 +167,7 @@ void draw_tree(struct tree *message_tree, struct draw_status *draw_order){
     }
 }
 
-void redraw_tree(struct tree *client_message_tree, int* visible, struct draw_status *draw_order){
+void redraw_tree(struct tree *client_message_tree, struct visible_status* visible, struct draw_status *draw_order){
     order_draw_tree(client_message_tree, visible, draw_order);
     draw_tree(client_message_tree, draw_order);
 }
@@ -171,6 +180,19 @@ int get_current_node(struct draw_status *draw_order){
         return draw_order[draw_order_i].id;
     }
     return -1;
+}
+
+void remove_new_message(struct draw_status *draw_order){
+    int draw_order_i = 0;
+    while (draw_order[draw_order_i].id != start_with->id) draw_order_i++;
+    draw_order_i += arrow_coord;
+    if (draw_order_i < board_max){
+        if(draw_order[draw_order_i].new_message){
+            draw_order[draw_order_i].new_message = 0;
+            goto_xy(draw_order[draw_order_i].level*3, arrow_coord);
+            puts("+");
+        }
+    }
 }
 
 void remove_symbol(int position){
@@ -205,6 +227,7 @@ void up(struct tree *message_tree, struct draw_status *draw_order){
         draw_tree(message_tree, draw_order);
     } else {
         update_arrow(arrow_coord-1);
+        remove_new_message(draw_order);
     }
 }
 
@@ -217,6 +240,7 @@ void down(struct tree *message_tree, struct draw_status *draw_order){
         draw_tree(message_tree, draw_order);
     } else {
         update_arrow(arrow_coord+1);
+        remove_new_message(draw_order);
     }
 };
 void right(struct tree *message_tree, struct draw_status *draw_order){
@@ -237,8 +261,8 @@ void left(struct tree *message_tree, struct draw_status *draw_order){
     draw_tree(message_tree, draw_order);
 }
 
-void roll(struct tree *message_tree, int *visible, struct draw_status *draw_order){
+void roll(struct tree *message_tree, struct visible_status *visible, struct draw_status *draw_order){
     int current_node = get_current_node(draw_order);
-    visible[current_node] = !visible[current_node];
+    visible[current_node].visible = !visible[current_node].visible;
     redraw_tree(message_tree, visible, draw_order);
 }
