@@ -169,7 +169,7 @@ void user_handler(){
     }
 }
 
-void start_client(char* user_name, int port){
+void client_mode(char* user_name, int port){
 
     creat_socket(port);
     init_receive();

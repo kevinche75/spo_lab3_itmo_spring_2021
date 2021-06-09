@@ -25,4 +25,4 @@ struct buffer{
     int used;
 };
 
-void start_client(char* name, int port);
+void client_mode(char* user_name, int port);

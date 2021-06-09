@@ -296,15 +296,6 @@ void *launch_listener_thread (void* args)
 }
 
 int server_mode(){
-//    pthread_t listener;
-//    pthread_create(&listener, NULL, launch_listener_thread, NULL);
-//    while (!end_server){
-//        char c = (char)getchar();
-//        if(c=='Q'){
-//            end_server = TRUE;
-//        }
-//    }
-
     launch_listener_thread(NULL);
     return 0;
 
